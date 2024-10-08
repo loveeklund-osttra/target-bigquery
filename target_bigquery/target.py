@@ -572,11 +572,13 @@ class TargetBigQuery(Target):
             for sink in self._sinks_active.values():  # type: ignore
                 sink.clean_up()
         else:
+            self.logger.error("gets here?")
             for worker in self.workers:
                 cast("Process", worker).join()
             for sink in self._sinks_active.values():  # type: ignore
                 sink.pre_state_hook()
         if state:
+            self.logger.error("This is probably where state is written?")
             self._write_state_message(state)
         self._reset_max_record_age()
 
