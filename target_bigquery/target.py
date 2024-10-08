@@ -548,7 +548,7 @@ class TargetBigQuery(Target):
                     # data is not actually written. Its _unlikely_ so the upside is
                     # greater than the downside for now but will revisit this.
                     self.logger.error("Draining all sinks and terminating.")
-                    self.drain_all(is_endofpipe=True)
+                    #self.drain_all(is_endofpipe=True)
                 except Exception:
                     self.logger.error("Drain failed.")
                 raise RuntimeError(msg) from e
