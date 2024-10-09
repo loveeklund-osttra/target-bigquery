@@ -71,16 +71,8 @@ class BatchJobWorker(BaseWorker):
                     job_config=bigquery.LoadJobConfig(**job.config),
                 ).result()
             except Exception as exc:
-                job.attempt += 1
-                logging.info("got an error in barchjob load")
-                if job.attempt > 3:
-                    # TODO: add a metric for this + a DLQ & wrap exception type
-                    self.error_notifier.send((exc, self.serialize_exception(exc)))
-                    raise
-                else:
-                    logging.info("requeues")
-                    self.queue.put(job)
-                    self.log_notifier.send(self.serialize_exception(exc))
+                self.error_notifier.send((exc, self.serialize_exception(exc)))
+                raise
             else:
                 self.job_notifier.send(True)
                 self.log_notifier.send(

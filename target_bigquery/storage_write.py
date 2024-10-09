@@ -189,23 +189,8 @@ class StorageWriteBatchWorker(BaseWorker):
                 self.awaiting.append(dispatch(generate_request(job.data, **kwargs)))
 
             except Exception as exc:
-                job.attempts += 1
-                self.logger.info(f"job.attempts : {job.attempts}")
-                self.max_errors_before_recycle -= 1
-                if job.attempts > 3:
-                    # TODO: add a metric for this + a DLQ & wrap exception type
-                    self.error_notifier.send((exc, self.serialize_exception(exc)))
-                else:
-                    self.queue.put(job)
-                # Track errors and recycle the stream if we hit a threshold
-                # 1 bad payload 👆 is not indicative of a bad bidi stream as it _could_
-                # be a transient error or luck of the draw with the first payload.
-                # 5 worker-specific errors is a good threshold to recycle the stream
-                # and start fresh. This is an arbitrary number and can be adjusted.
-                if self.max_errors_before_recycle == 0:
-                    self.wait(drain=True)
-                    self.close_cached_streams()
-                    raise
+                self.error_notifier.send((exc, self.serialize_exception(exc)))
+                raise
             else:
                 self.log_notifier.send(
                     f"[{self.ext_id}] Sent {len(job.data.serialized_rows)} rows to {write_stream}"  # type: ignore

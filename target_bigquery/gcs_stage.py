@@ -96,20 +96,9 @@ class GcsStagingWorker(BaseWorker):
                     shutil.copyfileobj(BytesIO(job.buffer), cast(BlobWriter, fh))
                 job.gcs_notifier.send(path)
             except Exception as exc:
-                job.attempt += 1
-                if job.attempt > 3:
-                    # TODO: add a metric for this + a DLQ & wrap exception type
-                    self.error_notifier.send((exc, self.serialize_exception(exc)))
-                    raise
-                else:
-                    self.queue.put(job)
-            else:
-                self.job_notifier.send(True)
-                self.log_notifier.send(
-                    f"[{self.ext_id}] Successfully uploaded {len(job.buffer)} bytes to {path}"
-                )
-            finally:
-                self.queue.task_done()  # type: ignore
+                self.error_notifier.send((exc, self.serialize_exception(exc)))
+                raise
+
 
 
 class GcsStagingThreadWorker(GcsStagingWorker, _Thread):

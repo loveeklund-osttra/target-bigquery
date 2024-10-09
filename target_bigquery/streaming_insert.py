@@ -67,13 +67,8 @@ class StreamingInsertWorker(BaseWorker):
                     reraise=True,
                 )(client.insert_rows_json)(table=job.table, json_rows=job.records)
             except Exception as exc:
-                job.attempt += 1
-                if job.attempt > 3:
-                    # TODO: add a metric for this + a DLQ & wrap exception type
-                    self.error_notifier.send((exc, self.serialize_exception(exc)))
-                    raise
-                else:
-                    self.queue.put(job)
+                self.error_notifier.send((exc, self.serialize_exception(exc)))
+                raise
             else:
                 self.job_notifier.send(True)
                 self.log_notifier.send(
