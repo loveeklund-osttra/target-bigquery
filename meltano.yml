@@ -29,6 +29,13 @@ plugins:
   - name: tap-carbon-intensity
     variant: meltano
     pip_url: git+https://gitlab.com/meltano/tap-carbon-intensity.git
+
+  - name: tap-testsource
+    namespace: tap-testsource
+    pip_url: -e extract/tap-testsource
+    executable: tap-testsource
+    config:
+      test_val: foo
   loaders:
   - name: target-bigquery
     namespace: target_bigquery
@@ -40,9 +47,10 @@ plugins:
     - record-flattening
     config:
       project: ${BQ_PROJECT}
-      method: storage_write_api
+      method: batch_job
+      bucket: ${GCS_BUCKET}
       denormalized: true
-      credentials_path: ${HOME}/.gcp/dwh-credentials.json
-      dataset: raw_testing
+      dataset: ${BQ_DATASET}
+      upsert: true
       batch_size: 500
       timeout: 300
