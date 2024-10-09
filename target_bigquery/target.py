@@ -529,6 +529,7 @@ class TargetBigQuery(Target):
     def drain_one(self, sink: Sink) -> None:  # type: ignore
         """Drain a sink. Includes a hook to manage the worker pool and notifications."""
         # self.logger.info(f"Jobs queued : {self.queue.qsize()} | Max nb jobs queued : {os.cpu_count() * 4} | Nb workers : {len(self.workers)} | Max nb workers : {os.cpu_count() * 2}")
+        self.logger.info("start of drain_one")
         self.resize_worker_pool()
         while self.job_notification.poll():
             ext_id = self.job_notification.recv()
@@ -537,6 +538,7 @@ class TargetBigQuery(Target):
         while self.log_notification.poll():
             msg = self.log_notification.recv()
             self.logger.info(msg)
+        self.logger.info("start polling for error in drain_one")
         if self.error_notification.poll():
             e, msg = self.error_notification.recv()
             if self.config.get("fail_fast", True):
@@ -561,24 +563,27 @@ class TargetBigQuery(Target):
         Includes an additional hook to allow sinks to do any pre-state message processing."""
         state = copy.deepcopy(self._latest_state)
         sink: BaseBigQuerySink
+        self.logger.info(f"start drain_all with endofpipe = {is_endofpipe}")
         self._drain_all(list(self._sinks_active.values()), self.max_parallelism)
         if is_endofpipe:
             for worker in self.workers:
                 if cast("Process", worker).is_alive():
                     self.queue.put(None)
             while len(self.workers):
+                self.logger.info("start waiting for workers using join in drain_all")
                 cast("Process", worker).join()
                 worker = self.workers.pop()
             for sink in self._sinks_active.values():  # type: ignore
+                self.logger.info("runs clean up")
                 sink.clean_up()
         else:
-            self.logger.error("gets here?")
             for worker in self.workers:
+                self.logger.info("start waiting for workers using join in drain_all")
                 cast("Process", worker).join()
             for sink in self._sinks_active.values():  # type: ignore
                 sink.pre_state_hook()
         if state:
-            self.logger.error("This is probably where state is written?")
+            self.logger.info("goes to write out state")
             self._write_state_message(state)
         self._reset_max_record_age()
 

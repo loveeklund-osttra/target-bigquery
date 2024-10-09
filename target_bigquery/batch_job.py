@@ -9,7 +9,7 @@
 # The above copyright notice and this permission notice shall be included in all copies or
 # substantial portions of the Software.
 """BigQuery Batch Job Sink."""
-
+import logging
 import os
 from io import BytesIO
 from mmap import mmap
@@ -51,10 +51,13 @@ class BatchJobWorker(BaseWorker):
 
     def run(self) -> None:
         """Run the worker."""
+        logging.info("starts the batchjobworker run ")
         client: bigquery.Client = bigquery_client_factory(self.credentials)
         while True:
             try:
+                logging.info("gets job to run in batchjobworker run")
                 job: Optional[Job] = self.queue.get(timeout=30.0)
+                logging.info("got job in batchjobworker run")
             except Empty:
                 break
             if job is None:
@@ -69,11 +72,13 @@ class BatchJobWorker(BaseWorker):
                 ).result()
             except Exception as exc:
                 job.attempt += 1
+                logging.info("got an error in barchjob load")
                 if job.attempt > 3:
                     # TODO: add a metric for this + a DLQ & wrap exception type
                     self.error_notifier.send((exc, self.serialize_exception(exc)))
                     raise
                 else:
+                    logging.info("requeues")
                     self.queue.put(job)
                     self.log_notifier.send(self.serialize_exception(exc))
             else:
@@ -82,6 +87,7 @@ class BatchJobWorker(BaseWorker):
                     f"[{self.ext_id}] Loaded {len(job.data)} bytes into {job.table}."
                 )
             finally:
+                logging.info("marks task taks as done")
                 self.queue.task_done()  # type: ignore
 
 
