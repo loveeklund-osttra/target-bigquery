@@ -51,13 +51,10 @@ class BatchJobWorker(BaseWorker):
 
     def run(self) -> None:
         """Run the worker."""
-        logging.info("starts the batchjobworker run ")
         client: bigquery.Client = bigquery_client_factory(self.credentials)
         while True:
             try:
-                logging.info("gets job to run in batchjobworker run")
                 job: Optional[Job] = self.queue.get(timeout=30.0)
-                logging.info("got job in batchjobworker run")
             except Empty:
                 break
             if job is None:
@@ -79,7 +76,6 @@ class BatchJobWorker(BaseWorker):
                     f"[{self.ext_id}] Loaded {len(job.data)} bytes into {job.table}."
                 )
             finally:
-                logging.info("marks task taks as done")
                 self.queue.task_done()  # type: ignore
 
 
